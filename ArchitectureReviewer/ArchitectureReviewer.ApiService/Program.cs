@@ -25,7 +25,7 @@ builder.Services.AddSingleton(chatClient);
 
 /////// SPECIALIST AGENTS ///////
 
-AddSpecialist(
+var architectureAgent = AddSpecialist(
     "ArchitectureAgent",
     "Reviews structure, service boundaries, coupling, data ownership and integration patterns.",
     """
@@ -111,7 +111,7 @@ builder.AddAIAgent("SynthesisAgent", (sp, name) => new ChatClientAgent(
 
 /////// SEQUENTIAL BOARD: ReviewPanel -> SynthesisAgent ///////
 
-builder.AddWorkflow("ArchitectureReviewBoard", (sp, name) =>
+var reviewBoard = builder.AddWorkflow("ArchitectureReviewBoard", (sp, name) =>
 {
     var reviewPanel = sp.GetRequiredKeyedService<AIAgent>("ReviewPanel");
     var synthesisAgent = sp.GetRequiredKeyedService<AIAgent>("SynthesisAgent");
@@ -131,9 +131,13 @@ app.MapDevUI();
 app.MapOpenAIResponses();
 app.MapOpenAIConversations();
 
+// Dedicated Chat Completions endpoints for the single agent and the full board.
+app.MapOpenAIChatCompletions(architectureAgent, "/agents/architecture/v1/chat/completions");
+app.MapOpenAIChatCompletions(reviewBoard, "/agents/review-board/v1/chat/completions");
+
 app.Run();
 
-void AddSpecialist(string agentName, string description, string instructions) =>
+IHostedAgentBuilder AddSpecialist(string agentName, string description, string instructions) =>
     builder.AddAIAgent(agentName, (sp, name) => new ChatClientAgent(
         chatClient: sp.GetRequiredService<IChatClient>(),
         instructions: instructions,

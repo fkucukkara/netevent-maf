@@ -86,7 +86,7 @@ ArchitectureReviewer/
 
 | Project | Responsibility |
 | --- | --- |
-| `ApiService` | All agent wiring lives in [Program.cs](ArchitectureReviewer/ArchitectureReviewer.ApiService/Program.cs). It exposes DevUI and the OpenAI Responses and Conversations endpoints. |
+| `ApiService` | All agent wiring lives in [Program.cs](ArchitectureReviewer/ArchitectureReviewer.ApiService/Program.cs). It exposes DevUI, dedicated Chat Completions endpoints for `ArchitectureAgent` and `ArchitectureReviewBoard`, and the OpenAI Responses and Conversations endpoints. Sample requests are in the `.http` file next to it. |
 | `AppHost` | Starts `apiservice`, forwards the Azure OpenAI settings to it and adds a **DevUI Visual App** link in the Aspire dashboard. See [AppHost.cs](ArchitectureReviewer/ArchitectureReviewer.AppHost/AppHost.cs). |
 | `ServiceDefaults` | Shared telemetry and resilience setup. See [Extensions.cs](ArchitectureReviewer/ArchitectureReviewer.ServiceDefaults/Extensions.cs). |
 
@@ -210,8 +210,37 @@ Try running `ReviewPanel` or a single specialist from DevUI to compare the indiv
 | Path | Purpose |
 | --- | --- |
 | `/devui` | DevUI for exploring and running agents and workflows |
+| `POST /agents/architecture/v1/chat/completions` | OpenAI Chat Completions endpoint for `ArchitectureAgent` (single specialist) |
+| `POST /agents/review-board/v1/chat/completions` | OpenAI Chat Completions endpoint for `ArchitectureReviewBoard` (full review plus synthesis) |
 | OpenAI Responses and Conversations | OpenAI-compatible APIs mapped with `MapOpenAIResponses` and `MapOpenAIConversations` |
 | `/health`, `/alive` | Health checks (Development only) |
+
+The two dedicated endpoints are mapped in [Program.cs](ArchitectureReviewer/ArchitectureReviewer.ApiService/Program.cs) with `MapOpenAIChatCompletions`:
+
+```csharp
+app.MapOpenAIChatCompletions(architectureAgent, "/agents/architecture/v1/chat/completions");
+app.MapOpenAIChatCompletions(reviewBoard, "/agents/review-board/v1/chat/completions");
+```
+
+They accept standard Chat Completions requests (including `"stream": true`), so any OpenAI client can call them. The `model` field is not used for routing here; the path selects the agent.
+
+### Try the endpoints
+
+Open [ArchitectureReviewer.ApiService.http](ArchitectureReviewer/ArchitectureReviewer.ApiService/ArchitectureReviewer.ApiService.http) in VS Code (REST Client or the built-in HTTP support) with the AppHost or `ApiService` running. It contains ready-made requests for:
+
+- the health check,
+- `ArchitectureAgent`,
+- `ArchitectureReviewBoard`, with and without streaming.
+
+The `@ApiService_HostAddress` variable defaults to `http://localhost:5344` (the `ApiService` launch profile). When you start through Aspire, copy the `apiservice` URL from the dashboard instead.
+
+Example with `curl`:
+
+```powershell
+curl -X POST http://localhost:5344/agents/review-board/v1/chat/completions `
+  -H "Content-Type: application/json" `
+  -d '{"model":"ArchitectureReviewBoard","messages":[{"role":"user","content":"Migrate our monolith to microservices on AKS."}]}'
+```
 
 ## Talking points for the session
 

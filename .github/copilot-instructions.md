@@ -10,7 +10,7 @@ Demo repo for "Agentic .NET in Action: Microsoft Agent Framework, Aspire and Fou
 
 ## Projects
 
-- `ArchitectureReviewer.ApiService`: hosts agents, workflows, DevUI and OpenAI Responses/Conversations endpoints. All agent wiring is in `Program.cs`.
+- `ArchitectureReviewer.ApiService`: hosts agents, workflows, DevUI, OpenAI Responses/Conversations endpoints and dedicated Chat Completions endpoints for `ArchitectureAgent` and `ArchitectureReviewBoard` (samples in the `.http` file). All agent wiring is in `Program.cs`.
 - `ArchitectureReviewer.AppHost`: Aspire orchestration; forwards `AZURE_OPENAI_ENDPOINT` and `AZURE_OPENAI_DEPLOYMENT_NAME` to `apiservice` and adds the `/devui` link.
 - `ArchitectureReviewer.ServiceDefaults`: shared OpenTelemetry, health checks, service discovery and HTTP resilience.
 - `ArchitectureReviewer.Web` is out of scope; do not add it to the solution.

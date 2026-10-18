@@ -1,6 +1,49 @@
 @ApiService_HostAddress = http://localhost:5344
 
-GET {{ApiService_HostAddress}}/weatherforecast/
-Accept: application/json
+### Health check (Development only)
+GET {{ApiService_HostAddress}}/health
+
+### ArchitectureAgent: single specialist (Chat Completions)
+POST {{ApiService_HostAddress}}/agents/architecture/v1/chat/completions
+Content-Type: application/json
+
+{
+  "model": "ArchitectureAgent",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Migrate our monolithic e-commerce platform to microservices on AKS with an event-driven backbone on Azure Service Bus, a separate PostgreSQL database per service, and a single Azure Front Door entry point across two regions."
+    }
+  ]
+}
+
+### ArchitectureReviewBoard: ReviewPanel (4 specialists) -> SynthesisAgent (Chat Completions)
+POST {{ApiService_HostAddress}}/agents/review-board/v1/chat/completions
+Content-Type: application/json
+
+{
+  "model": "ArchitectureReviewBoard",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Migrate our monolithic e-commerce platform to microservices on AKS with an event-driven backbone on Azure Service Bus, a separate PostgreSQL database per service, and a single Azure Front Door entry point across two regions."
+    }
+  ]
+}
+
+### ArchitectureReviewBoard: streaming
+POST {{ApiService_HostAddress}}/agents/review-board/v1/chat/completions
+Content-Type: application/json
+
+{
+  "model": "ArchitectureReviewBoard",
+  "stream": true,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Migrate our monolithic e-commerce platform to microservices on AKS with an event-driven backbone on Azure Service Bus, a separate PostgreSQL database per service, and a single Azure Front Door entry point across two regions."
+    }
+  ]
+}
 
 ###
