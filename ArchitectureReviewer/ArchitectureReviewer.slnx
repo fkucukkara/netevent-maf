@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="ArchitectureReviewer.ApiService/ArchitectureReviewer.ApiService.csproj" />
+  <Project Path="ArchitectureReviewer.AppHost/ArchitectureReviewer.AppHost.csproj" />
+  <Project Path="ArchitectureReviewer.ServiceDefaults/ArchitectureReviewer.ServiceDefaults.csproj" />
+</Solution>
