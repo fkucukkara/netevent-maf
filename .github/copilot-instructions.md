@@ -25,7 +25,7 @@ Demo repo for "Agentic .NET in Action: Microsoft Agent Framework, Aspire and Fou
 
 ## Conventions
 
-- No hardcoded endpoints or secrets. `AZURE_OPENAI_ENDPOINT` is required; `AZURE_OPENAI_DEPLOYMENT_NAME` defaults to `gpt-5-mini`.
+- No hardcoded endpoints or secrets. `AZURE_OPENAI_ENDPOINT` is required; `AZURE_OPENAI_DEPLOYMENT_NAME` defaults to `gpt-6-luna`.
 - Auth is `AzureCliCredential` for local development only (requires `az login`).
 - Package versions are managed per project. MAF `Microsoft.Agents.AI.DevUI`, `Hosting` and `Hosting.OpenAI` are prereleases; keep them aligned with the `Microsoft.Agents.AI.OpenAI` 1.4.x line.
 - Keep the HTTP resilience handler LLM-friendly (long attempt/total timeouts); the default 10 s timeout cuts off agent calls.

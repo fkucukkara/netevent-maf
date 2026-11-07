@@ -12,7 +12,7 @@ builder.AddServiceDefaults();
 
 var endpoint = builder.Configuration["AZURE_OPENAI_ENDPOINT"]
     ?? throw new InvalidOperationException("AZURE_OPENAI_ENDPOINT is not set.");
-var deploymentName = builder.Configuration["AZURE_OPENAI_DEPLOYMENT_NAME"] ?? "gpt-5-mini";
+var deploymentName = builder.Configuration["AZURE_OPENAI_DEPLOYMENT_NAME"] ?? "gpt-6-luna";
 
 // AzureCliCredential is for local development only (requires `az login`).
 IChatClient chatClient = new AzureOpenAIClient(new Uri(endpoint), new AzureCliCredential())

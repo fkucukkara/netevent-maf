@@ -2,7 +2,7 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 var apiService = builder.AddProject<Projects.ArchitectureReviewer_ApiService>("apiservice")
     .WithEnvironment("AZURE_OPENAI_ENDPOINT", builder.Configuration["AZURE_OPENAI_ENDPOINT"] ?? string.Empty)
-    .WithEnvironment("AZURE_OPENAI_DEPLOYMENT_NAME", builder.Configuration["AZURE_OPENAI_DEPLOYMENT_NAME"] ?? "gpt-5-mini")
+    .WithEnvironment("AZURE_OPENAI_DEPLOYMENT_NAME", builder.Configuration["AZURE_OPENAI_DEPLOYMENT_NAME"] ?? "gpt-6-luna")
     .WithUrls(context =>
     {
         var baseUrl = context.Urls.FirstOrDefault();

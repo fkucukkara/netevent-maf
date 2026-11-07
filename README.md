@@ -9,7 +9,7 @@ You submit a software architecture proposal. Four specialist AI agents review it
 | Runtime | .NET 10 |
 | Agents and workflows | [Microsoft Agent Framework](https://learn.microsoft.com/agent-framework/) (MAF) |
 | Orchestration and observability | .NET Aspire (dashboard, OpenTelemetry) |
-| Models | Azure OpenAI / Microsoft Foundry (default deployment `gpt-5-mini`) |
+| Models | Azure OpenAI / Microsoft Foundry (default deployment `gpt-6-luna`) |
 | Dev UI | MAF DevUI |
 
 > The solution is intentionally small. There is no RAG, no tools, no external integrations and no custom UI. The goal is to show the agent and workflow concepts clearly.
@@ -153,9 +153,9 @@ In `ServiceDefaults`:
 ## Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- [Aspire](https://aspire.dev) tooling (the AppHost uses `Aspire.AppHost.Sdk` 13.6.1)
+- [Aspire](https://aspire.dev) tooling (the AppHost uses `Aspire.AppHost.Sdk` 13.6.4)
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli), signed in with `az login`
-- An Azure OpenAI or Microsoft Foundry resource with a chat model deployment (default name `gpt-5-mini`)
+- An Azure OpenAI or Microsoft Foundry resource with a chat model deployment (default name `gpt-6-luna`)
 - Your identity needs access to the model, for example the **Cognitive Services OpenAI User** role
 
 ## Configuration
@@ -163,14 +163,14 @@ In `ServiceDefaults`:
 | Setting | Required | Default | Description |
 | --- | --- | --- | --- |
 | `AZURE_OPENAI_ENDPOINT` | Yes | none | Endpoint of your Azure OpenAI / Foundry resource |
-| `AZURE_OPENAI_DEPLOYMENT_NAME` | No | `gpt-5-mini` | Model deployment name |
+| `AZURE_OPENAI_DEPLOYMENT_NAME` | No | `gpt-6-luna` | Model deployment name |
 
 The AppHost reads both values from its configuration and forwards them to `apiservice`. Keep your endpoint out of source control by using user secrets:
 
 ```powershell
 cd ArchitectureReviewer/ArchitectureReviewer.AppHost
 dotnet user-secrets set "AZURE_OPENAI_ENDPOINT" "https://<your-resource>.services.ai.azure.com"
-dotnet user-secrets set "AZURE_OPENAI_DEPLOYMENT_NAME" "gpt-5-mini"
+dotnet user-secrets set "AZURE_OPENAI_DEPLOYMENT_NAME" "gpt-6-luna"
 ```
 
 Alternatively, set them as environment variables or in `appsettings.Development.json` (do not commit real values).
@@ -287,7 +287,7 @@ Aspire is a code-first way to compose, run and observe a distributed .NET app. H
 The agents work without Aspire, but you would lose the easy visibility into what each agent did.
 
 **What is Microsoft Foundry and how is it used here?**
-Foundry is Microsoft's platform for building and running AI apps and agents (model catalog, deployments, evaluation, governance). In this demo it is the **model provider**: `apiservice` calls a chat model deployment (default `gpt-5-mini`) on a Foundry / Azure OpenAI resource through `AzureOpenAIClient`. The agents themselves run in our own service; we do not use Foundry-hosted agents here.
+Foundry is Microsoft's platform for building and running AI apps and agents (model catalog, deployments, evaluation, governance). In this demo it is the **model provider**: `apiservice` calls a chat model deployment (default `gpt-6-luna`) on a Foundry / Azure OpenAI resource through `AzureOpenAIClient`. The agents themselves run in our own service; we do not use Foundry-hosted agents here.
 
 ### How the pieces fit together
 
