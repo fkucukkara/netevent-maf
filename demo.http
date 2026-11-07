@@ -1,0 +1,23 @@
+@host = http://localhost:5344
+
+### Single specialist
+POST {{host}}/agents/architecture/v1/chat/completions
+Content-Type: application/json
+
+{
+  "model": "ArchitectureAgent",
+  "messages": [
+    { "role": "user", "content": "Migrate our monolith to microservices on AKS with Azure Service Bus and a PostgreSQL database per service." }
+  ]
+}
+
+### Full review board (4 specialists -> synthesis)
+POST {{host}}/agents/review-board/v1/chat/completions
+Content-Type: application/json
+
+{
+  "model": "ArchitectureReviewBoard",
+  "messages": [
+    { "role": "user", "content": "Migrate our monolith to microservices on AKS with Azure Service Bus and a PostgreSQL database per service." }
+  ]
+}
