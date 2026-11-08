@@ -146,4 +146,3 @@ IHostedAgentBuilder AddSpecialist(string agentName, string description, string i
         tools: null,
         loggerFactory: sp.GetService<ILoggerFactory>(),
         services: sp));
-
