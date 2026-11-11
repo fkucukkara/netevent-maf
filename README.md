@@ -6,7 +6,7 @@ You submit a software architecture proposal. Four specialist AI agents review it
 
 | | |
 | --- | --- |
-| Runtime | .NET 10 |
+| Runtime | .NET 11 |
 | Agents and workflows | [Microsoft Agent Framework](https://learn.microsoft.com/agent-framework/) (MAF) |
 | Orchestration and observability | .NET Aspire (dashboard, OpenTelemetry) |
 | Models | Azure OpenAI / Microsoft Foundry (default deployment `gpt-6-luna`) |
@@ -152,7 +152,7 @@ In `ServiceDefaults`:
 
 ## Prerequisites
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- [.NET 11 SDK](https://dotnet.microsoft.com/download)
 - [Aspire](https://aspire.dev) tooling (the AppHost uses `Aspire.AppHost.Sdk` 13.6.4)
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli), signed in with `az login`
 - An Azure OpenAI or Microsoft Foundry resource with a chat model deployment (default name `gpt-6-luna`)

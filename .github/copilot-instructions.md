@@ -4,7 +4,7 @@ Demo repo for "Agentic .NET in Action: Microsoft Agent Framework, Aspire and Fou
 
 ## Stack
 
-- .NET 10, Aspire, Microsoft Agent Framework (MAF), DevUI, Azure OpenAI / Microsoft Foundry.
+- .NET 11, Aspire, Microsoft Agent Framework (MAF), DevUI, Azure OpenAI / Microsoft Foundry.
 - Solution file: `ArchitectureReviewer/ArchitectureReviewer.slnx`. Build with `dotnet build ArchitectureReviewer/ArchitectureReviewer.slnx`.
 - Run via the AppHost: `dotnet run --project ArchitectureReviewer/ArchitectureReviewer.AppHost`.
 
