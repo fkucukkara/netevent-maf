@@ -18,10 +18,12 @@ Demo repo for "Agentic .NET in Action: Microsoft Agent Framework, Aspire and Fou
 ## Architecture
 
 - Four specialist agents (`ArchitectureAgent`, `SecurityAgent`, `ReliabilityScalabilityAgent`, `CostOperationsAgent`) run concurrently in the `ReviewPanel` workflow (`AgentWorkflowBuilder.BuildConcurrent`).
-- `ArchitectureReviewBoard` is a sequential workflow: `ReviewPanel` (as an agent) then `SynthesisAgent`.
+- `ReviewBoardWorkflow` is a sequential workflow: `ReviewPanel` (as an agent) then `SynthesisAgent`. `ArchitectureReviewBoard` is the `GuardedAgent` wrapper around it (input guard, then validated markdown).
 - All agents share one `IChatClient` singleton. Register agents with `AddAIAgent` and workflows with `AddWorkflow(...).AddAsAIAgent()` so DevUI discovers them.
 - Each specialist has a narrow scope and must not review other specialists' areas. Keep instructions short and single-purpose.
-- `SynthesisAgent` output must include: Proposed Design, Rationale, Trade-offs, Risks, Mitigations, Open Questions, and how conflicting opinions were resolved.
+- Agents return typed JSON (`Contracts/`: `SpecialistReview`, `ArchitectureRecommendation`) via `ChatResponseFormat.ForJsonSchema`; markdown is rendered in code by `ReviewRenderer`, not by the model. `ContractValidatingAgent` checks referential integrity and retries once.
+- Guardrails live in `Guardrails/`: `InputGuard` (size cap, secret redaction, `<proposal>` framing, classifier), `GuardedAgent`, rate limiting and error mapping in `Program.cs`. Tunables are under the `Guardrails` config section.
+- `SynthesisAgent` output must include: Proposed Design, Rationale, Trade-offs, Risks, Mitigations, Open Questions, and how conflicting opinions were resolved (the rendered markdown has these sections).
 
 ## Conventions
 
@@ -31,7 +33,7 @@ Demo repo for "Agentic .NET in Action: Microsoft Agent Framework, Aspire and Fou
 - Keep the HTTP resilience handler LLM-friendly (long attempt/total timeouts); the default 10 s timeout cuts off agent calls.
 - Telemetry must include the `*Microsoft.Extensions.AI` and `*Microsoft.Extensions.Agents*` activity sources.
 - DevUI is a development tool only; do not expose it in production configuration.
-- Out of scope: RAG, tools, external integrations, custom UI, production hardening. Do not add them unless asked.
+- Out of scope: RAG, tools, external integrations, custom UI. Do not add them unless asked.
 
 ## Gotchas
 
