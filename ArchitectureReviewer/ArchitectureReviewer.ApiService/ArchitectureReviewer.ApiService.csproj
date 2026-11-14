@@ -17,6 +17,7 @@
     <PackageReference Include="Microsoft.Agents.AI.Hosting" Version="1.25.0-preview.261014.1" />
     <PackageReference Include="Microsoft.Agents.AI.Hosting.OpenAI" Version="1.25.0-alpha.261014.1" />
     <PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.25.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="11.0.0" />
   </ItemGroup>
 
 </Project>

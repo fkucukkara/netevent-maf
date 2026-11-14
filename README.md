@@ -222,7 +222,7 @@ app.MapOpenAIChatCompletions(architectureAgent, "/agents/architecture/v1/chat/co
 app.MapOpenAIChatCompletions(reviewBoard, "/agents/review-board/v1/chat/completions");
 ```
 
-They accept standard Chat Completions requests (including `"stream": true`), so any OpenAI client can call them. The `model` field is not used for routing here; the path selects the agent.
+They accept standard Chat Completions requests (including `"stream": true`), so any OpenAI client can call them. The path selects the agent. The `model` field selects the Azure OpenAI deployment (default `gpt-6-luna`); other names must be listed in `AZURE_OPENAI_ALLOWED_DEPLOYMENTS` (comma-separated) or the request returns 400.
 
 ### Try the endpoints
 
@@ -239,7 +239,24 @@ Example with `curl`:
 ```powershell
 curl -X POST http://localhost:5344/agents/review-board/v1/chat/completions `
   -H "Content-Type: application/json" `
-  -d '{"model":"ArchitectureReviewBoard","messages":[{"role":"user","content":"Migrate our monolith to microservices on AKS."}]}'
+  -d '{"model":"gpt-6-luna","messages":[{"role":"user","content":"Migrate our monolith to microservices on AKS."}]}'
+```
+
+### Calling a deployed instance
+
+Outside Development the endpoints require a Microsoft Entra bearer token. Get one with the Azure CLI, replacing `<client-id>` with the application (client) ID of the API's app registration (the `AzureAd:Audience` value is `api://<client-id>`):
+
+```powershell
+$token = az account get-access-token --scope "api://<client-id>/.default" --query accessToken -o tsv
+```
+
+Then pass it in the `Authorization` header:
+
+```powershell
+curl -X POST https://<your-apiservice-url>/agents/review-board/v1/chat/completions `
+  -H "Authorization: Bearer $token" `
+  -H "Content-Type: application/json" `
+  -d '{"model":"gpt-6-luna","messages":[{"role":"user","content":"Migrate our monolith to microservices on AKS."}]}'
 ```
 
 ## Talking points for the session
@@ -249,136 +266,6 @@ curl -X POST http://localhost:5344/agents/review-board/v1/chat/completions `
 - **Concurrent then sequential.** Fan-out for independent opinions, then a single chair to reconcile them.
 - **Observability from day one.** Aspire and OpenTelemetry make agent behavior visible without extra code.
 - **DevUI for fast inner loop.** Run and inspect agents without building a UI.
-
-## FAQ: questions you may get
-
-### The basics
-
-**What is Microsoft Agent Framework (MAF)?**
-MAF is Microsoft's open-source .NET (and Python) framework for building AI agents and multi-agent workflows. It builds on `Microsoft.Extensions.AI` (`IChatClient`) and unifies ideas from Semantic Kernel and AutoGen. It gives you:
-
-- **Agents** (`AIAgent`, `ChatClientAgent`): a model plus instructions, optional tools and memory.
-- **Workflows**: a graph of agents and executors connected by edges, with ready-made patterns (sequential, concurrent, handoff, group chat).
-- **Hosting**: DI integration (`AddAIAgent`, `AddWorkflow`) and OpenAI-compatible endpoints.
-- **Observability**: OpenTelemetry out of the box.
-
-**Why do we need it? Can't I just call `IChatClient` five times?**
-You can, and for a demo this small it would work. MAF removes the plumbing you would otherwise write and maintain yourself:
-
-- Running agents in parallel, collecting results and passing them to the next step.
-- A common abstraction (`AIAgent`) so a single agent, a workflow or a remote agent are all called the same way.
-- Registration, discovery and hosting through DI.
-- Tracing for every agent and chat call.
-- A path to tools, memory, checkpointing, human-in-the-loop and other agent features later without redesigning.
-
-**What is DevUI?**
-A small web app from the MAF packages that discovers the agents and workflows registered in your service. You can chat with an agent, run a workflow, and watch the events and outputs as they happen. It is served from the `/devui` path of `apiservice`.
-
-**Why do we need DevUI?**
-It gives you a fast inner loop: test an agent or workflow right after writing it, without building a front end or calling the API by hand. It is also a good demo tool because it shows the workflow execution visually. It is a **development tool only**; do not expose it in production.
-
-**What is Aspire and why is it here?**
-Aspire is a code-first way to compose, run and observe a distributed .NET app. Here it:
-
-- Starts `apiservice` and injects the configuration.
-- Provides the dashboard with logs, metrics and **traces**. The traces show every LLM call, its duration and (in this demo) its prompt and response.
-- Adds the DevUI link to the resource.
-
-The agents work without Aspire, but you would lose the easy visibility into what each agent did.
-
-**What is Microsoft Foundry and how is it used here?**
-Foundry is Microsoft's platform for building and running AI apps and agents (model catalog, deployments, evaluation, governance). In this demo it is the **model provider**: `apiservice` calls a chat model deployment (default `gpt-6-luna`) on a Foundry / Azure OpenAI resource through `AzureOpenAIClient`. The agents themselves run in our own service; we do not use Foundry-hosted agents here.
-
-### How the pieces fit together
-
-**What is the difference between an agent and a workflow?**
-An agent is one model with instructions. A workflow is a graph that decides which agents (or code steps called *executors*) run, in what order and with what data. The flow is defined in **code, not by an LLM**, so it is deterministic: the same four specialists always run, then the synthesis.
-
-**`ReviewPanel` has no explicit state. How does its data reach `ArchitectureReviewBoard`?**
-The state is the **conversation history** (a list of `ChatMessage`) that flows along the workflow:
-
-```mermaid
-sequenceDiagram
-    participant U as Caller
-    participant B as ArchitectureReviewBoard (sequential)
-    participant P as ReviewPanel (concurrent)
-    participant S as SynthesisAgent
-    U->>B: messages [proposal]
-    B->>P: messages [proposal]
-    P-->>P: fan-out to 4 specialists, fan-in aggregator
-    P-->>B: specialist reviews (ChatMessages)
-    B->>S: [proposal + reviews]
-    S-->>U: structured recommendation
-```
-
-1. `BuildSequential` passes the accumulated messages from one participant to the next. Each participant's output is appended to the history the next one receives.
-2. `ReviewPanel` is registered with `AddAsAIAgent()`, so from the board's point of view it is just an agent. Its response is the messages produced by its concurrent aggregator (the specialists' reviews).
-3. `SynthesisAgent` therefore receives the proposal and the reviews as ordinary chat history. That is why its instructions say "the conversation contains the proposal followed by independent reviews".
-
-There is no database, shared variable or custom DTO between the two workflows. The messages are the contract.
-
-You can verify this live: open the last chat span for `SynthesisAgent` in the Aspire **Traces** view. The prompt shows the proposal and all four reviews (visible because `EnableSensitiveData = true`).
-
-**Then where is state stored? Does the system remember anything?**
-Not in this demo. Each run is independent: the caller sends the proposal, the workflow runs, the result comes back. If you need memory across turns, MAF offers:
-
-- **Conversations**: the OpenAI Conversations endpoint mapped in this service keeps message history per conversation.
-- **Agent sessions / memory providers** for per-agent memory.
-- **Workflow shared state and checkpointing** for long-running or resumable workflows.
-
-We intentionally left these out to keep the demo focused.
-
-**What if I want more control than the default aggregator gives me?**
-Switch to an explicit `WorkflowBuilder` graph: fan-out edges to the four agents, a custom fan-in executor that formats the reviews (for example as labeled sections or JSON), then an edge to `SynthesisAgent`. The same agents are reused. DevUI then renders it as a graph, which is also a good way to show the workflow structure.
-
-**Are the four specialists really running in parallel?**
-Yes. The concurrent pattern fans the same input to all four agents and runs them at the same time, so the total latency is roughly the slowest specialist plus the synthesis call, not the sum of all five. Watch the overlapping spans in the Aspire trace. Parallel calls count against your model's rate limit (tokens per minute).
-
-**What happens if one specialist fails or times out?**
-In this demo the workflow run would fail, because there is no per-agent error handling. HTTP retries and long timeouts are configured in `ServiceDefaults` (2 retries, 3 min per attempt, 5 min total). For production you would add fallbacks or partial-result handling, for example in an explicit fan-in executor.
-
-**Why four small agents instead of one agent with a big prompt?**
-
-- Each reviewer has a narrow scope and focused instructions, which gives more consistent output.
-- They run in parallel, so latency stays low.
-- They are independent, so one reviewer's opinion does not bias another.
-- You can tune, test or swap a single specialist (even give it a different model) without touching the rest.
-
-The trade-off is more LLM calls: five per review, so higher token cost.
-
-**Why one shared `IChatClient`?**
-It is simple and cheap to create once. Nothing prevents you from registering different clients or models per agent, for example a stronger model for `SynthesisAgent`.
-
-**What does `AddAsAIAgent()` do?**
-It registers the workflow as an `AIAgent` in DI (keyed by its name). That makes it discoverable by DevUI, callable through the OpenAI Responses endpoint and usable as a step inside another workflow, which is how `ReviewPanel` is nested into `ArchitectureReviewBoard`.
-
-**Why does the service expose OpenAI Responses and Conversations endpoints?**
-They make every registered agent and workflow callable through an OpenAI-compatible API, so existing OpenAI clients and tools can talk to them, and DevUI uses them too. It also gives you conversation history management without writing a custom API.
-
-### Practical and production questions
-
-**Is the output deterministic? How do you test it?**
-The flow is deterministic, but model output is not. Keep instructions narrow, use consistent output sections (as `SynthesisAgent` does) and evaluate quality with a fixed set of sample proposals. Evaluations are a natural next step and Foundry has tooling for that.
-
-**What does one review cost?**
-Five model calls: four specialist calls (each capped to about 250 words) plus one synthesis call that includes the proposal and all four reviews as input. Use a smaller deployment for the specialists if you need to reduce cost.
-
-**Can I add tools, RAG or other data sources?**
-Yes, `ChatClientAgent` accepts tools (currently `tools: null`). For example, a `SecurityAgent` could query your policy documents. This is out of scope for the demo.
-
-**Is this production ready?**
-No. It is a demo. Before production:
-
-- Replace `AzureCliCredential` with `DefaultAzureCredential` / managed identity.
-- Remove DevUI.
-- Turn off `EnableSensitiveData` (prompts and responses are written to telemetry).
-- Add authentication, rate limiting, error handling, evaluations and content safety.
-
-**Why are some packages prerelease?**
-The DevUI and hosting packages for MAF are still in preview. Keep them aligned with the `Microsoft.Agents.AI.OpenAI` version line to avoid mismatches.
-
-**Why does the build fail with confusing overload errors on `AsAIAgent`?**
-Extension methods such as `AsAIAgent` on `AIProjectClient` live in the `Azure.AI.Projects` namespace. A missing `using` produces misleading overload errors. This demo uses `ChatClientAgent` directly, so it does not apply here, but it is a common trap when moving to Foundry projects.
 
 ## Notes and limitations
 

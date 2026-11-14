@@ -1,5 +1,10 @@
+using System.Text.Json;
+using ArchitectureReviewer.ApiService;
 using Azure.AI.OpenAI;
+using Azure.Core;
 using Azure.Identity;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.DevUI;
 using Microsoft.Agents.AI.Hosting;
@@ -14,14 +19,34 @@ var endpoint = builder.Configuration["AZURE_OPENAI_ENDPOINT"]
     ?? throw new InvalidOperationException("AZURE_OPENAI_ENDPOINT is not set.");
 var deploymentName = builder.Configuration["AZURE_OPENAI_DEPLOYMENT_NAME"] ?? "gpt-6-luna";
 
+var isDevelopment = builder.Environment.IsDevelopment();
+
 // AzureCliCredential is for local development only (requires `az login`).
-IChatClient chatClient = new AzureOpenAIClient(new Uri(endpoint), new AzureCliCredential())
-    .GetChatClient(deploymentName)
-    .AsIChatClient()
-    .AsBuilder()
-    .UseOpenTelemetry(configure: c => c.EnableSensitiveData = true)
-    .Build();
-builder.Services.AddSingleton(chatClient);
+var clientId = builder.Configuration["AZURE_CLIENT_ID"];
+TokenCredential credential = isDevelopment
+    ? new AzureCliCredential()
+    : new ManagedIdentityCredential(string.IsNullOrEmpty(clientId)
+        ? ManagedIdentityId.SystemAssigned
+        : ManagedIdentityId.FromUserAssignedClientId(clientId));
+
+// Deployments a caller may select through the request's "model" field (comma-separated).
+var allowedDeployments = new HashSet<string>(
+    (builder.Configuration["AZURE_OPENAI_ALLOWED_DEPLOYMENTS"] ?? "")
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Append(deploymentName),
+    StringComparer.OrdinalIgnoreCase);
+
+var azureOpenAI = new AzureOpenAIClient(new Uri(endpoint), credential);
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<IChatClient>(sp =>
+    new ModelRoutingChatClient(
+        // Telemetry wraps each deployment client so spans report the routed model, not the default.
+        deployment => azureOpenAI.GetChatClient(deployment).AsIChatClient()
+            .AsBuilder()
+            .UseOpenTelemetry(configure: c => c.EnableSensitiveData = isDevelopment)
+            .Build(),
+        sp.GetRequiredService<IHttpContextAccessor>(),
+        deploymentName));
 
 /////// SPECIALIST AGENTS ///////
 
@@ -119,17 +144,90 @@ var reviewBoard = builder.AddWorkflow("ArchitectureReviewBoard", (sp, name) =>
     return AgentWorkflowBuilder.BuildSequential(name, reviewPanel, synthesisAgent);
 }).AddAsAIAgent();
 
-builder.AddDevUI();
-builder.Services.AddOpenAIResponses();
-builder.Services.AddOpenAIConversations();
+// DevUI and the stateful Responses/Conversations endpoints are Development-only.
+if (isDevelopment)
+{
+    builder.AddDevUI();
+    builder.Services.AddOpenAIResponses();
+    builder.Services.AddOpenAIConversations();
+}
+else
+{
+    var tenantId = builder.Configuration["AzureAd:TenantId"]
+        ?? throw new InvalidOperationException("AzureAd:TenantId is not set.");
+    var audience = builder.Configuration["AzureAd:Audience"]
+        ?? throw new InvalidOperationException("AzureAd:Audience is not set.");
+
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.Authority = $"https://login.microsoftonline.com/{tenantId}/v2.0";
+            options.Audience = audience;
+        });
+    builder.Services.AddAuthorizationBuilder()
+        .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
+}
 
 var app = builder.Build();
 
 app.MapDefaultEndpoints();
 
-app.MapDevUI();
-app.MapOpenAIResponses();
-app.MapOpenAIConversations();
+if (isDevelopment)
+{
+    app.MapDevUI();
+    app.MapOpenAIResponses();
+    app.MapOpenAIConversations();
+}
+else
+{
+    app.UseAuthentication();
+    app.UseAuthorization();
+}
+
+// Map the Chat Completions "model" field to an allowed deployment for this request.
+app.Use(async (context, next) =>
+{
+    if (HttpMethods.IsPost(context.Request.Method) && context.Request.Path.StartsWithSegments("/agents"))
+    {
+        context.Request.EnableBuffering();
+        string? model = null;
+        try
+        {
+            using var doc = await JsonDocument.ParseAsync(context.Request.Body, cancellationToken: context.RequestAborted);
+            if (doc.RootElement.ValueKind == JsonValueKind.Object
+                && doc.RootElement.TryGetProperty("model", out var m)
+                && m.ValueKind == JsonValueKind.String)
+            {
+                model = m.GetString();
+            }
+        }
+        catch (JsonException)
+        {
+        }
+        context.Request.Body.Position = 0;
+
+        if (!string.IsNullOrWhiteSpace(model))
+        {
+            if (!allowedDeployments.Contains(model))
+            {
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    error = new
+                    {
+                        message = $"Model '{model}' is not available. Allowed: {string.Join(", ", allowedDeployments)}.",
+                        type = "invalid_request_error",
+                        param = "model",
+                    },
+                });
+                return;
+            }
+            context.Items[ModelRoutingChatClient.DeploymentItemKey] = model;
+        }
+    }
+
+    await next();
+});
 
 // Dedicated Chat Completions endpoints for the single agent and the full board.
 app.MapOpenAIChatCompletions(architectureAgent, "/agents/architecture/v1/chat/completions");

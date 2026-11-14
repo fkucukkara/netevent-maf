@@ -9,6 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.Azure.AppContainers" Version="13.6.5" />
+    <PackageReference Include="Aspire.Hosting.Azure.CognitiveServices" Version="13.6.5" />
     <PackageReference Include="MessagePack" Version="3.1.12" />
   </ItemGroup>
 
