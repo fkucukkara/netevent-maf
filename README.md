@@ -222,7 +222,7 @@ app.MapOpenAIChatCompletions(architectureAgent, "/agents/architecture/v1/chat/co
 app.MapOpenAIChatCompletions(reviewBoard, "/agents/review-board/v1/chat/completions");
 ```
 
-They accept standard Chat Completions requests (including `"stream": true`), so any OpenAI client can call them. The `model` field is not used for routing here; the path selects the agent.
+They accept standard Chat Completions requests (including `"stream": true`), so any OpenAI client can call them. The path selects the agent. The `model` field selects the Azure OpenAI deployment (default `gpt-6-luna`); other names must be listed in `AZURE_OPENAI_ALLOWED_DEPLOYMENTS` (comma-separated) or the request returns 400.
 
 ### Try the endpoints
 
@@ -239,7 +239,24 @@ Example with `curl`:
 ```powershell
 curl -X POST http://localhost:5344/agents/review-board/v1/chat/completions `
   -H "Content-Type: application/json" `
-  -d '{"model":"ArchitectureReviewBoard","messages":[{"role":"user","content":"Migrate our monolith to microservices on AKS."}]}'
+  -d '{"model":"gpt-6-luna","messages":[{"role":"user","content":"Migrate our monolith to microservices on AKS."}]}'
+```
+
+### Calling a deployed instance
+
+Outside Development the endpoints require a Microsoft Entra bearer token. Get one with the Azure CLI, replacing `<client-id>` with the application (client) ID of the API's app registration (the `AzureAd:Audience` value is `api://<client-id>`):
+
+```powershell
+$token = az account get-access-token --scope "api://<client-id>/.default" --query accessToken -o tsv
+```
+
+Then pass it in the `Authorization` header:
+
+```powershell
+curl -X POST https://<your-apiservice-url>/agents/review-board/v1/chat/completions `
+  -H "Authorization: Bearer $token" `
+  -H "Content-Type: application/json" `
+  -d '{"model":"gpt-6-luna","messages":[{"role":"user","content":"Migrate our monolith to microservices on AKS."}]}'
 ```
 
 ## Talking points for the session
