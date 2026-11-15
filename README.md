@@ -61,6 +61,8 @@ Each specialist stays inside its own scope and answers with **Strengths, Concern
 
 The default concurrent aggregator returns the user message plus one assistant message per specialist. `SynthesisAgent` therefore sees the proposal and all four reviews as conversation history.
 
+Workflows exchange typed JSON between agents. The agents you pick in DevUI (`ArchitectureAgent`, `ReviewPanel`, `SynthesisAgent`, `ArchitectureReviewBoard`, ...) wrap them with the input guard and render markdown. The raw JSON workflows (`ReviewPanelWorkflow`, `ReviewBoardWorkflow`) stay available for the graph view.
+
 ### Synthesis output
 
 The Synthesis Agent always returns these sections:

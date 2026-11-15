@@ -42,8 +42,31 @@ public static class ReviewRenderer
             return null;
         }
 
-        var review = reviews.Values.Last();
         var sb = new StringBuilder();
+        RenderReview(sb, reviews.Values.Last());
+        return sb.ToString().TrimEnd();
+    }
+
+    /// <summary>Renders every specialist review in the panel's output; null when none is valid.</summary>
+    public static string? RenderPanel(IReadOnlyList<ChatMessage> messages)
+    {
+        var (reviews, _) = Extract(messages);
+        if (reviews.Count == 0)
+        {
+            return null;
+        }
+
+        var sb = new StringBuilder();
+        foreach (var review in reviews.Values.OrderBy(r => r.Domain))
+        {
+            RenderReview(sb, review);
+        }
+
+        return sb.ToString().TrimEnd();
+    }
+
+    private static void RenderReview(StringBuilder sb, SpecialistReview review)
+    {
         sb.AppendLine($"## {review.Domain} Review").AppendLine();
         sb.AppendLine("### Strengths");
         AppendList(sb, review.Strengths);
@@ -52,7 +75,6 @@ public static class ReviewRenderer
         sb.AppendLine("### Recommendations");
         AppendList(sb, review.Recommendations.Select(r =>
             $"{r.Action} (priority {r.Priority}{(r.FindingIds.Length > 0 ? $", addresses {string.Join(", ", r.FindingIds)}" : "")})"));
-        return sb.ToString().TrimEnd();
     }
 
     public static (Dictionary<ReviewDomain, SpecialistReview> Reviews, ArchitectureRecommendation? Recommendation) Extract(

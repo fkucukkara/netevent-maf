@@ -1,8 +1,8 @@
+using Microsoft.Extensions.AI;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.Extensions.AI;
 
 namespace ArchitectureReviewer.ApiService.Contracts;
 

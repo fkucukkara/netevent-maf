@@ -129,7 +129,8 @@ AddSpecialist(
 
 /////// CONCURRENT REVIEW PANEL ///////
 
-builder.AddWorkflow("ReviewPanel", (sp, name) =>
+// Workflows exchange JSON, so they use the internal ".Contract" agents; the public agents render markdown.
+builder.AddWorkflow("ReviewPanelWorkflow", (sp, name) =>
 {
     var specialists = new[]
     {
@@ -137,18 +138,25 @@ builder.AddWorkflow("ReviewPanel", (sp, name) =>
         "SecurityAgent",
         "ReliabilityScalabilityAgent",
         "CostOperationsAgent",
-    }.Select(n => sp.GetRequiredKeyedService<AIAgent>(n));
+    }.Select(n => sp.GetRequiredKeyedService<AIAgent>(ContractKey(n)));
 
     return AgentWorkflowBuilder.BuildConcurrent(name, specialists);
 }).AddAsAIAgent();
 
+builder.AddAIAgent("ReviewPanel", (sp, name) => new GuardedAgent(
+    sp.GetRequiredKeyedService<AIAgent>("ReviewPanelWorkflow"),
+    sp.GetRequiredService<InputGuard>(),
+    ReviewRenderer.RenderPanel,
+    name,
+    "Guarded review panel: four specialists in parallel, rendered as markdown."));
+
 /////// SYNTHESIS AGENT ///////
 
-builder.AddAIAgent("SynthesisAgent", (sp, name) => ContractValidatingAgent.ForSynthesis(new ChatClientAgent(
+builder.Services.AddKeyedSingleton<AIAgent>(ContractKey("SynthesisAgent"), (sp, _) => ContractValidatingAgent.ForSynthesis(new ChatClientAgent(
     sp.GetRequiredService<IChatClient>(),
     new ChatClientAgentOptions
     {
-        Name = name,
+        Name = "SynthesisAgent",
         Description = "Synthesizes specialist reviews into a structured architecture recommendation.",
         ChatOptions = new ChatOptions
         {
@@ -171,12 +179,19 @@ builder.AddAIAgent("SynthesisAgent", (sp, name) => ContractValidatingAgent.ForSy
     sp.GetService<ILoggerFactory>(),
     sp)));
 
-/////// SEQUENTIAL BOARD: ReviewPanel -> SynthesisAgent ///////
+builder.AddAIAgent("SynthesisAgent", (sp, name) => new GuardedAgent(
+    sp.GetRequiredKeyedService<AIAgent>(ContractKey("SynthesisAgent")),
+    sp.GetRequiredService<InputGuard>(),
+    ReviewRenderer.RenderBoard,
+    name,
+    "Guarded synthesis of specialist reviews into a structured architecture recommendation."));
+
+/////// SEQUENTIAL BOARD: ReviewPanelWorkflow -> SynthesisAgent ///////
 
 builder.AddWorkflow("ReviewBoardWorkflow", (sp, name) =>
 {
-    var reviewPanel = sp.GetRequiredKeyedService<AIAgent>("ReviewPanel");
-    var synthesisAgent = sp.GetRequiredKeyedService<AIAgent>("SynthesisAgent");
+    var reviewPanel = sp.GetRequiredKeyedService<AIAgent>("ReviewPanelWorkflow");
+    var synthesisAgent = sp.GetRequiredKeyedService<AIAgent>(ContractKey("SynthesisAgent"));
 
     return AgentWorkflowBuilder.BuildSequential(name, reviewPanel, synthesisAgent);
 }).AddAsAIAgent();
@@ -297,12 +312,7 @@ app.Use(async (context, next) =>
 
 // Dedicated Chat Completions endpoints for the single agent and the full board.
 app.MapOpenAIChatCompletions(
-    new GuardedAgent(
-        app.Services.GetRequiredKeyedService<AIAgent>("ArchitectureAgent"),
-        app.Services.GetRequiredService<InputGuard>(),
-        ReviewRenderer.RenderSpecialist,
-        "ArchitectureAgent",
-        "Guarded single-specialist architecture review."),
+    app.Services.GetRequiredKeyedService<AIAgent>("ArchitectureAgent"),
     "/agents/architecture/v1/chat/completions");
 app.MapOpenAIChatCompletions(
     app.Services.GetRequiredKeyedService<AIAgent>("ArchitectureReviewBoard"),
@@ -329,12 +339,15 @@ static bool TryMapGuardrailError(Exception exception, out int status, out string
     return false;
 }
 
-IHostedAgentBuilder AddSpecialist(string agentName, ReviewDomain domain, string description, string instructions) =>
-    builder.AddAIAgent(agentName, (sp, name) => ContractValidatingAgent.ForSpecialist(new ChatClientAgent(
+static string ContractKey(string agentName) => $"{agentName}.Contract";
+
+void AddSpecialist(string agentName, ReviewDomain domain, string description, string instructions)
+{
+    builder.Services.AddKeyedSingleton<AIAgent>(ContractKey(agentName), (sp, _) => ContractValidatingAgent.ForSpecialist(new ChatClientAgent(
         sp.GetRequiredService<IChatClient>(),
         new ChatClientAgentOptions
         {
-            Name = name,
+            Name = agentName,
             Description = description,
             ChatOptions = new ChatOptions
             {
@@ -353,3 +366,11 @@ IHostedAgentBuilder AddSpecialist(string agentName, ReviewDomain domain, string 
         },
         sp.GetService<ILoggerFactory>(),
         sp)));
+
+    builder.AddAIAgent(agentName, (sp, name) => new GuardedAgent(
+        sp.GetRequiredKeyedService<AIAgent>(ContractKey(agentName)),
+        sp.GetRequiredService<InputGuard>(),
+        ReviewRenderer.RenderSpecialist,
+        name,
+        description));
+}

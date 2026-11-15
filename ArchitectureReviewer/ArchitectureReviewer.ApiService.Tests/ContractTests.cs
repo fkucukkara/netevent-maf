@@ -94,6 +94,28 @@ public class ContractTests
     }
 
     [Fact]
+    public void RenderPanel_renders_every_specialist_review()
+    {
+        var messages = new[]
+        {
+            new ChatMessage(ChatRole.User, "proposal"),
+            new ChatMessage(ChatRole.Assistant, System.Text.Json.JsonSerializer.Serialize(Review(ReviewDomain.Security), ReviewContract.Json)),
+            new ChatMessage(ChatRole.Assistant, System.Text.Json.JsonSerializer.Serialize(Review(ReviewDomain.CostOperations), ReviewContract.Json)),
+        };
+
+        var markdown = ReviewRenderer.RenderPanel(messages);
+
+        Assert.NotNull(markdown);
+        Assert.Contains("## Security Review", markdown);
+        Assert.Contains("## CostOperations Review", markdown);
+        Assert.Contains("### Concerns", markdown);
+    }
+
+    [Fact]
+    public void RenderPanel_returns_null_without_a_review() =>
+        Assert.Null(ReviewRenderer.RenderPanel([new ChatMessage(ChatRole.Assistant, "plain text")]));
+
+    [Fact]
     public void RenderBoard_returns_null_without_a_recommendation() =>
         Assert.Null(ReviewRenderer.RenderBoard([new ChatMessage(ChatRole.Assistant, "plain text")]));
 }
