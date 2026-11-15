@@ -1,5 +1,5 @@
-using System.Text;
 using Microsoft.Extensions.AI;
+using System.Text;
 
 namespace ArchitectureReviewer.ApiService.Contracts;
 

@@ -1,5 +1,5 @@
-using System.Text.RegularExpressions;
 using Microsoft.Extensions.AI;
+using System.Text.RegularExpressions;
 
 namespace ArchitectureReviewer.ApiService.Guardrails;
 

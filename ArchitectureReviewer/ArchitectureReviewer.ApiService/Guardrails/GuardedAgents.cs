@@ -1,7 +1,7 @@
-using System.Runtime.CompilerServices;
 using ArchitectureReviewer.ApiService.Contracts;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
+using System.Runtime.CompilerServices;
 
 namespace ArchitectureReviewer.ApiService.Guardrails;
 
