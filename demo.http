@@ -5,7 +5,7 @@ POST {{host}}/agents/architecture/v1/chat/completions
 Content-Type: application/json
 
 {
-  "model": "ArchitectureAgent",
+  "model": "gpt-5-nano",
   "messages": [
     { "role": "user", "content": "Migrate our monolith to microservices on AKS with Azure Service Bus and a PostgreSQL database per service." }
   ]
@@ -16,7 +16,7 @@ POST {{host}}/agents/review-board/v1/chat/completions
 Content-Type: application/json
 
 {
-  "model": "ArchitectureReviewBoard",
+  "model": "gpt-6-luna",
   "messages": [
     { "role": "user", "content": "Migrate our monolith to microservices on AKS with Azure Service Bus and a PostgreSQL database per service." }
   ]

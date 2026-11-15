@@ -14,6 +14,8 @@ You submit a software architecture proposal. Four specialist AI agents review it
 
 > The solution is intentionally small. There is no RAG, no tools, no external integrations and no custom UI. The goal is to show the agent and workflow concepts clearly.
 
+For the request pipeline, guardrails and why one message triggers several LLM calls, see [architecture.md](ArchitectureReviewer/architecture.md).
+
 ## What you will see in the demo
 
 1. Four narrow, single-purpose agents (about 5 lines of instructions each).
@@ -60,6 +62,8 @@ Each specialist stays inside its own scope and answers with **Strengths, Concern
 | `ArchitectureReviewBoard` | Sequential | `AgentWorkflowBuilder.BuildSequential(ReviewPanel, SynthesisAgent)` |
 
 The default concurrent aggregator returns the user message plus one assistant message per specialist. `SynthesisAgent` therefore sees the proposal and all four reviews as conversation history.
+
+Workflows exchange typed JSON between agents. The agents you pick in DevUI (`ArchitectureAgent`, `ReviewPanel`, `SynthesisAgent`, `ArchitectureReviewBoard`, ...) wrap them with the input guard and render markdown. The raw JSON workflows (`ReviewPanelWorkflow`, `ReviewBoardWorkflow`) stay available for the graph view.
 
 ### Synthesis output
 
