@@ -14,6 +14,8 @@ You submit a software architecture proposal. Four specialist AI agents review it
 
 > The solution is intentionally small. There is no RAG, no tools, no external integrations and no custom UI. The goal is to show the agent and workflow concepts clearly.
 
+For the request pipeline, guardrails and why one message triggers several LLM calls, see [architecture.md](ArchitectureReviewer/architecture.md).
+
 ## What you will see in the demo
 
 1. Four narrow, single-purpose agents (about 5 lines of instructions each).
